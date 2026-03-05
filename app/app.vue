@@ -7,7 +7,7 @@ useHead({
   },
 });
 
-const title = "Rightbet";
+const title = "Zemenbet";
 const description =
   "An online gaming for football betting and other virtual games.";
 
