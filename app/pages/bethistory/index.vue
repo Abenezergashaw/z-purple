@@ -255,7 +255,8 @@ onMounted(async () => {
                 ID: {{ b.id }}
                 <UIcon
                   @click="getPrintTicket(b.id)"
-                  name="material-symbols:print"
+                  name="material-symbols-light:print-rounded"
+                  class="text-black"
                 />
               </div>
             </div>

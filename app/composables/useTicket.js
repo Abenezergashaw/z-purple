@@ -2,7 +2,8 @@ import { ref } from "vue";
 import axios from "axios";
 
 const { currentBonus } = useBonus();
-const { MAX_WIN, TAX } = useConfig();
+const { MAX_WIN, TAX, useBonusState } = useConfig();
+watch(MAX_WIN, (newval) => console.log(newval));
 
 const ticket = ref([]);
 const totalBets = computed(() => ticket.value.length);
@@ -24,7 +25,7 @@ const bonus = computed(() => {
 
 const possibleWin = computed(() => {
   const w = win.value + bonus.value;
-  return Math.min(w, MAX_WIN);
+  return Math.min(w, MAX_WIN.value);
 });
 
 const tax = computed(() => {
@@ -33,6 +34,7 @@ const tax = computed(() => {
 });
 
 const actualWinning = computed(() => possibleWin.value - tax.value);
+
 const bonusPercent = computed(() => {
   const b = currentBonus(totalBets.value) * 100;
   return b;
@@ -48,8 +50,6 @@ const placingBetSuccess = ref(null);
 
 const placedBetId = ref(null);
 const ticketDisplay = ref("");
-
-const useBonusState = ref(false);
 
 let placingBetTimer = null;
 
@@ -242,15 +242,12 @@ export function useTicket() {
     const { toggleModal } = useModal();
 
     const { loggedIn, checkSession } = useAuth();
-    console.log(useBonusState.value, "Use bonus");
     if (!loggedIn.value) {
       toggleModal("login");
       return;
     }
 
     const endPoint = useBonusState.value ? "place-bonus-bet" : "place-bet";
-
-    console.log(endPoint, useBonusState.value);
 
     placingBet.value = true;
     placingBetError.value = null;
@@ -326,7 +323,7 @@ export function useTicket() {
 
     // Fix: Use triple equals for comparison
     if (printModal.value === true) {
-      const response = await axios.get(`${url}/getPrintTicket?id=${id}`);
+      const response = await axios.get(`${url}/api/get-ticket?ticketId=${id}`);
 
       if (response?.data?.error) return;
       ticketDisplay.value = response.data;
@@ -350,10 +347,6 @@ export function useTicket() {
     }
   };
 
-  const toggleUseBonus = () => {
-    useBonusState.value = !useBonusState.value;
-  };
-
   return {
     manageBets,
     removeBet,
@@ -371,7 +364,6 @@ export function useTicket() {
     continueBet,
     getPrintTicket,
     loadCashierTicket,
-    toggleUseBonus,
     ticket,
     totalBets,
     totalOdds,
@@ -390,6 +382,5 @@ export function useTicket() {
     placingBetSuccess,
     ticketDisplay,
     placedBetId,
-    useBonusState,
   };
 }

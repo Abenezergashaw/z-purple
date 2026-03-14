@@ -16,7 +16,6 @@ const {
   possibleWin,
   actualWinning,
   bonusPercent,
-  useBonusState,
   removeBet,
   incrementStake,
   decrementStake,
@@ -29,11 +28,10 @@ const {
   continueBet,
   repeatBet,
   getPrintTicket,
-  toggleUseBonus,
 } = useTicket();
 
 const { loggedIn, toggleModal, showShareTicketModal, user } = useAuth();
-
+const { useBonusState, toggleUseBonus } = useConfig();
 defineProps({
   open: Boolean,
 });

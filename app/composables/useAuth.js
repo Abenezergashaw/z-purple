@@ -35,24 +35,29 @@ export function useAuth() {
 
     registerError.value = null;
 
-    const response = await axios.post(
-      `${url}/api/register`,
-      {
-        phone: form.phone,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
-      },
-      { withCredentials: true },
-    );
+    try {
+      const response = await axios.post(
+        `${url}/auth/register`,
+        {
+          username: form.phone,
+          password: form.password,
+          confirmPassword: form.confirmPassword,
+        },
+        { withCredentials: true },
+      );
 
-    if (!response.data.success) {
-      registerError.value = response.data.message;
-      return;
-    }
+      if (!response?.data?.error) {
+        return (registerError.value = response.data.result);
+      }
 
-    const ok = checkSession();
-    if (ok) {
-      toggleModal("register");
+      const ok = checkSession();
+      if (ok) {
+        toggleModal("register");
+      }
+    } catch (err) {
+      const serverMessage =
+        err.response?.data?.message || "Something went wrong";
+      registerError.value = serverMessage;
     }
   };
 
@@ -140,7 +145,7 @@ export function useAuth() {
 
   const logout = async () => {
     const { url } = useUrl();
-    await axios.get(`${url}/api/logout`, { withCredentials: true });
+    await axios.post(`${url}/auth/logout`, {}, { withCredentials: true });
     user.value = null;
     loggedIn.value = false;
   };
