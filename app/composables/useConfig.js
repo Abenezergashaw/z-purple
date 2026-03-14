@@ -1,5 +1,5 @@
 export function useConfig() {
-  const useBonusState = ref(true);
+  const useBonusState = ref(false);
   const MAX_WIN = computed(() => (useBonusState.value ? 10000 : 1000000));
   const TAX = 0.15;
   watch(MAX_WIN, (newval) => console.log(newval));
