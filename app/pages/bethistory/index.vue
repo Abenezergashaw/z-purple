@@ -68,6 +68,7 @@ const tabs = [
   { label: "Open", key: "two", value: "pending" },
   { label: "Lost", key: "three", value: "lost" },
   { label: "Won", key: "four", value: "won" },
+  { label: "Bonus", key: "five", value: "rewarded" },
 ];
 
 function selectTab(index) {
@@ -158,14 +159,20 @@ onMounted(async () => {
               <div>
                 Possible Win:
                 {{
-                  Math.min(
-                    (
-                      Number(b.potential_win) +
-                      Number(b.bonus_amount) -
-                      Number(b.tax_amount)
-                    ).toFixed(2),
-                    850000,
-                  )
+                  b.status === "pending"
+                    ? Math.min(
+                        (
+                          Number(b.potential_win) +
+                          Number(b.bonus_amount) -
+                          Number(b.tax_amount)
+                        ).toFixed(2),
+                        850000,
+                      )
+                    : b.status === "lost"
+                      ? 0.0
+                      : b.status === "won" || b.status === "rewarded"
+                        ? Number(b.paid_amount).toFixed(2)
+                        : 0.0
                 }}
                 ETB
               </div>
@@ -176,9 +183,11 @@ onMounted(async () => {
                 backgroundColor:
                   b.status === 'won'
                     ? 'green'
-                    : b.status === 'lost' || b.status === 'rewarded'
+                    : b.status === 'lost'
                       ? 'red'
-                      : '#E1E1E1',
+                      : b.status === 'rewarded'
+                        ? '#FFCC32'
+                        : '#E1E1E1',
               }"
             ></div>
           </div>
@@ -288,25 +297,31 @@ onMounted(async () => {
               <span>{{
                 b.status === "won"
                   ? "WON"
-                  : b.status === "lost" || b.status === "rewarded"
+                  : b.status === "lost"
                     ? "LOST"
-                    : "PENDING"
+                    : b.status === "rewarded"
+                      ? "BONUS"
+                      : "PENDING"
               }}</span>
               <UIcon
                 :name="
                   b.status === 'won'
                     ? 'ix:success-filled'
-                    : b.status === 'lost' || b.status === 'rewarded'
+                    : b.status === 'lost'
                       ? 'carbon:close-filled'
-                      : 'stash:circle-duotone'
+                      : b.status === 'rewarded'
+                        ? 'noto:yellow-circle'
+                        : 'stash:circle-duotone'
                 "
                 :style="{
                   backgroundColor:
                     b.status === 'won'
                       ? 'green'
-                      : b.status === 'lost' || b.status === 'rewarded'
+                      : b.status === 'lost'
                         ? 'red'
-                        : '#E1E1E1',
+                        : b.status === 'rewarded'
+                          ? '#fff'
+                          : '#E1E1E1',
                 }"
               />
             </div>
@@ -314,15 +329,8 @@ onMounted(async () => {
             <div>
               {{
                 b.status === "won" || b.status === "rewarded"
-                  ? Math.min(
-                      (
-                        Number(b.potential_win) +
-                        Number(b.bonus_amount) -
-                        Number(b.tax_amount)
-                      ).toFixed(2),
-                      850000,
-                    )
-                  : 0.0
+                  ? Number(b.paid_amount).toFixed(2)
+                  : 0
               }}
               ETB
             </div>
