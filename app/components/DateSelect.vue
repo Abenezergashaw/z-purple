@@ -91,15 +91,17 @@ watch([fromDate, toDate], ([from, to]) => {
       <label class="text-xs">Period</label>
       <select v-model="preset" class="border h-10 md:h-7 px-2 w-full">
         <option value="all">All</option>
-        <option value="today">Today</option>
+        <option value="day">Today</option>
         <option value="2days">Last 2 Days</option>
         <option value="week">Last Week</option>
-        <option value="30days">Last 30 Days</option>
+        <option value="month">Last 30 Days</option>
+        <option value="this_week">This Week</option>
+        <option value="this_month">This Month</option>
       </select>
     </div>
 
     <!-- From -->
-    <div class="flex flex-col gap-1 w-full md:w-40">
+    <div v-if="false" class="flex flex-col gap-1 w-full md:w-40">
       <label class="text-xs">From</label>
       <input
         type="date"
@@ -109,7 +111,7 @@ watch([fromDate, toDate], ([from, to]) => {
     </div>
 
     <!-- To -->
-    <div class="flex flex-col gap-1 w-full md:w-40">
+    <div v-if="false" class="flex flex-col gap-1 w-full md:w-40">
       <label class="text-xs">To</label>
       <input
         type="date"

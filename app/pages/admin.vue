@@ -44,24 +44,76 @@ let cancelToken;
 const tabs = [
   { label: "Summary", value: 1 },
   { label: "Users", value: 0 },
+  { label: "Transactions", value: 2 },
 ];
+const filter = ref("day");
+const options = [
+  "day",
+  "2day",
+  "week",
+  "2week",
+  "month",
+  "this_week",
+  "this_month",
+];
+
+watch(filter, async (v) => {
+  fetchSummary();
+});
+
+function formatToLocalTime(utcString) {
+  // 1. SAFEGUARD: Return a placeholder if the string is missing or invalid
+  if (!utcString || typeof utcString !== "string") {
+    return "---"; // Or "Pending" / "N/A"
+  }
+
+  try {
+    // 2. Normalize the string for JavaScript's Date engine
+    // Result: "2026-03-17T21:00:00Z"
+    const isoString = utcString.replace(" ", "T") + "Z";
+    const date = new Date(isoString);
+
+    // 3. SAFEGUARD: Check if the resulting date is actually valid (e.g. not "Invalid Date")
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+
+    // 4. Format for Ethiopia (EAT)
+    return new Intl.DateTimeFormat("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(date);
+  } catch (error) {
+    console.error("Date conversion error:", error);
+    return "---";
+  }
+}
 
 function selectTab(value) {
   activeTab.value = value;
 }
 
 async function fetchUsers() {
-  const res = await axios.get(`${url}/api/fetchUsers`, {
-    params: {
-      id: user?.value?.id,
+  const res = await axios.post(
+    `${url}/api/get-children`,
+    {
+      userId: 17,
       page: page.value,
-      limit,
+      limit: 10,
+      search: search.value,
     },
-    withCredentials: true,
-  });
+    { withCredentials: true },
+  );
 
-  users.value = res.data.data;
-  totalPages.value = res.data.pagination.totalPages;
+  users.value = res.data.result.data;
+  totalPages.value = res.data.result.pagination.totalPages;
+
+  console.log(users.value, totalPages.value);
 }
 
 function nextPage() {
@@ -89,37 +141,41 @@ function openWithdraw(u) {
 }
 
 async function depositAMountToUser(userId, adminId) {
-  const res = await axios.post(
-    `${url}/api/manageBalanceByAdmin`,
-    {
-      adminId,
-      userId,
-      type: "Deposit",
-      amount: depositAmount.value,
-    },
-    { withCredentials: true },
-  );
+  try {
+    const res = await axios.post(
+      `${url}/api/payment/transfer`,
+      {
+        receiverId: userId,
+        amount: depositAmount.value,
+      },
+      { withCredentials: true },
+    );
 
-  depositResponse.value = res.data.message;
-  await fetchUsers();
-  checkSession();
+    depositResponse.value = "Deposit successful";
+    await fetchUsers();
+    checkSession();
+  } catch (error) {
+    depositResponse.value = error.response?.data?.message;
+  }
 }
 
 async function withdrawAMountToUser(userId, adminId) {
-  const res = await axios.post(
-    `${url}/api/manageBalanceByAdmin`,
-    {
-      adminId,
-      userId,
-      type: "Withdraw",
-      amount: withdrawAmount.value,
-    },
-    { withCredentials: true },
-  );
+  try {
+    const res = await axios.post(
+      `${url}/api/payment/collect`,
+      {
+        senderId: userId,
+        amount: withdrawAmount.value,
+      },
+      { withCredentials: true },
+    );
 
-  withdrawResponse.value = res.data.message;
-  await fetchUsers();
-  checkSession();
+    withdrawResponse.value = "Withdraw successful";
+    await fetchUsers();
+    checkSession();
+  } catch (error) {
+    withdrawResponse.value = error.response?.data?.message;
+  }
 }
 
 watch(search, async (value) => {
@@ -127,54 +183,39 @@ watch(search, async (value) => {
     fetchUsers();
     return;
   }
-
-  // Cancel previous request
-  if (cancelToken) cancelToken.cancel("New search");
-
-  cancelToken = axios.CancelToken.source();
-
-  loading.value = true;
-
-  try {
-    const res = await axios.get(`${url}/api/search-users`, {
-      params: { q: value, id: user?.value?.id },
-      cancelToken: cancelToken.token,
-    });
-
-    users.value = res.data;
-  } catch (err) {
-    if (!axios.isCancel(err)) console.error(err);
-  } finally {
-    loading.value = false;
-  }
+  fetchUsers();
 });
 
 async function createUser() {
-  if (!newUser.value.phone || !newUser.value.password) {
-    createResponse.value = "All fields are required";
-    return;
+  try {
+    if (!newUser.value.phone || !newUser.value.password) {
+      createResponse.value = "All fields are required";
+      return;
+    }
+
+    // call backend here
+    const res = await axios.post(
+      `${url}/api/users/create`,
+      {
+        username: newUser.value.phone,
+        password: newUser.value.password,
+        role: "player",
+      },
+      {
+        withCredentials: true,
+      },
+    );
+
+    createResponse.value = res.data.message;
+
+    fetchUsers();
+
+    // optional reset
+    newUser.value.phone = "";
+    newUser.value.password = "";
+  } catch (error) {
+    createResponse.value = error.response?.data?.message;
   }
-
-  // call backend here
-  const res = await axios.post(
-    `${url}/api/createUser`,
-    {
-      phone: newUser.value.phone,
-      password: newUser.value.password,
-      userId: user.value.id,
-    },
-    {
-      withCredentials: true,
-    },
-  );
-
-  createResponse.value = res.data.message;
-
-  fetchUsers();
-
-  // optional reset
-  newUser.value.phone = "";
-  newUser.value.password = "";
 }
 
 watch(loggedIn, (newVal) => {
@@ -182,25 +223,65 @@ watch(loggedIn, (newVal) => {
 });
 
 const summary = ref(null);
+const transaction = ref(null);
+const tTotal = ref(null);
+const tPage = ref(1);
 
-const fetchSummary = async (start, end) => {
-  const res = await axios.get(`${url}/getSummary?start=${start}&end=${end}`, {
-    withCredentials: true,
-  });
+const fetchSummary = async (range) => {
+  const res = await axios.post(
+    `${url}/api/financial-report`,
+    {
+      userId: user.value?.id,
+      range: filter.value,
+    },
+    {
+      withCredentials: true,
+    },
+  );
 
   if (!res?.data?.error) {
-    summary.value = res.data;
+    summary.value = res.data.report.result;
+    console.log(summary.value);
   }
 };
 
-onMounted(() => {
-  setTimeout(() => {
-    if (!loggedIn.value) return router.push("/prematch");
+const fetchTransactions = async () => {
+  const res = await axios.get(
+    `${url}/api/payment/history?page=${tPage.value}&limit=50`,
 
-    fetchUsers();
-    fetchSummary(null, null);
-  }, 1500);
+    {
+      withCredentials: true,
+    },
+  );
+  transaction.value = res.data.transactions.transactions;
+  tTotal.value = res.data.transactions.total;
+};
+
+watch(tPage, async (newVal) => {
+  fetchTransactions();
 });
+
+watch(
+  () => user.value?.id, // Watch the specific ID instead of just the login status
+  async (newId) => {
+    if (newId) {
+      // Now we ARE sure the user ID is ready
+      await Promise.all([
+        fetchUsers(),
+        fetchSummary("day"),
+        fetchTransactions(),
+      ]);
+    }
+  },
+  { immediate: true },
+);
+
+// onMounted(() => {
+//   setTimeout(() => {
+//     if (!loggedIn.value) return router.push("/prematch");
+
+//   }, 1500);
+// });
 </script>
 
 <template>
@@ -274,17 +355,17 @@ onMounted(() => {
       <div v-else>
         <div
           v-for="u in users"
-          :key="u.id"
+          :key="u.user_id"
           class="h-10 bg-white my-0.5 flex justify-between items-center text-xs px-2"
         >
           <div>
-            <div>{{ u.phone }}</div>
-            <div class="opacity-50">{{ u.id }}</div>
+            <div>{{ u.username }}</div>
+            <div class="opacity-50">{{ u.role }}</div>
           </div>
 
           <div>
-            <div>Withdrawable: {{ u.rBalance }} ETB</div>
-            <div class="opacity-50">Bonus: {{ u.bBalance }} ETB</div>
+            <div>Withdrawable: {{ u.real_balance }} ETB</div>
+            <div class="opacity-50">Bonus: {{ u.bonus_balance }} ETB</div>
           </div>
 
           <div class="flex gap-2">
@@ -307,59 +388,94 @@ onMounted(() => {
     </div>
 
     <div v-if="activeTab === 1" class="py-4">
-      <DateSelect
+      <!-- <DateSelect
         @change="
           async ({ start, end }) => {
             await fetchSummary(start, end);
           }
         "
-      />
-
+      /> -->
+      <div
+        class="w-full flex flex-col md:flex-row gap-3 justify-center items-center"
+      >
+        <select
+          v-model="filter"
+          class="text-sm w-full md:w-[200px] uppercase font-bold border-2 bg-gray-100 rounded-lg p-2 outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+        >
+          <option v-for="o in options" :key="o" :value="o">{{ o }}</option>
+        </select>
+      </div>
       <div
         class="w-full max-w-2xl my-3 mx-auto bg-slate-300 text-slate-900 rounded-xl p-4 shadow-lg"
       >
         <!-- Header -->
-        <div class="text-sm text-slate-700 mb-1">
-          User ID: {{ summary?.id }}
-        </div>
+        <div class="text-sm text-slate-700 mb-1">{{}}</div>
 
         <div class="text-xs text-slate-800 mb-4">
-          {{ new Date(summary?.startDate).toLocaleDateString() }}
+          {{ formatToLocalTime(summary?.startTime) }}
           →
-          {{ new Date(summary?.endDate).toLocaleDateString() }}
+          {{ formatToLocalTime(summary?.endTime) }}
         </div>
 
         <!-- Stats -->
         <div class="space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span>Total Bets</span>
-            <span class="font-semibold">{{ summary?.count }}</span>
-          </div>
-
-          <div class="flex justify-between">
-            <span class="text-green-400">Total Bet</span>
-            <span class="font-semibold text-green-400">
-              {{ summary?.totalStake.toFixed(2) }}
-            </span>
-          </div>
-
-          <div class="flex justify-between">
-            <span class="text-red-400">Total Win </span>
-            <span class="font-semibold text-red-400">
-              {{ summary?.totalWin.toFixed(2) }}
-            </span>
-          </div>
-
-          <div class="flex justify-between">
-            <span class="text-blue-400">Bonus</span>
-            <span class="font-semibold text-blue-400">
-              {{ summary?.totalCashback.toFixed(2) }}
-            </span>
+          <div v-for="s in summary?.statistics" class="flex justify-between">
+            <span class="uppercase">{{ s.type }}</span>
+            <span class="font-semibold">ETB {{ s.total_amount }}</span>
           </div>
         </div>
 
         <!-- Divider -->
         <div class="my-3 border-t border-slate-700"></div>
+      </div>
+    </div>
+
+    <div v-if="activeTab === 2" class="py-4">
+      <table class="w-full border text-sm">
+        <thead>
+          <tr class="border-b">
+            <th>Date</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Balance</th>
+            <th>From</th>
+            <th>To</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr v-for="t in transaction" :key="t.transaction_id" class="border-b">
+            <td class="text-center">{{ t.created_at }}</td>
+            <td class="text-center">{{ t.type }}</td>
+            <td class="text-center">{{ t.amount }}</td>
+            <td class="text-center">{{ t.balance_after }}</td>
+            <td class="text-center">{{ t.initiator }}</td>
+            <td class="text-center">{{ t.target || "-" }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div
+        class="flex items-center justify-center gap-1 mt-6 text-sm select-none"
+      >
+        <!-- Prev -->
+        <button
+          :disabled="tPage === 1"
+          @click="tPage--"
+          class="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Prev
+        </button>
+
+        <span>{{ tPage }}</span>
+        <!-- Next -->
+        <button
+          :disabled="tPage === tTotal"
+          @click="tPage++"
+          class="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
       </div>
     </div>
 
@@ -393,7 +509,7 @@ onMounted(() => {
             class="border h-10 w-full my-2 px-2"
           />
           <button
-            @click="depositAMountToUser(selectedUser.id, user.id)"
+            @click="depositAMountToUser(selectedUser.user_id, user.id)"
             class="bg-[#FBCC01] px-4 py-2 rounded"
           >
             Deposit
@@ -428,10 +544,10 @@ onMounted(() => {
             class="border h-10 w-full my-2 px-2"
           />
           <button
-            @click="withdrawAMountToUser(selectedUser.id, user.id)"
+            @click="withdrawAMountToUser(selectedUser.user_id, user.id)"
             class="bg-[#FBCC01] px-4 py-2 rounded"
           >
-            Witdraw
+            Withdraw
           </button>
           <div>{{ withdrawResponse }}</div>
         </div>
@@ -449,6 +565,8 @@ onMounted(() => {
             @click="
               createModal = false;
               createResponse = null;
+              newUser.value.phone = '';
+              newUser.value.password = '';
             "
           >
             ✕
@@ -460,7 +578,7 @@ onMounted(() => {
           <input
             v-model="newUser.phone"
             type="text"
-            placeholder="Phone"
+            placeholder="Username"
             class="border h-10 w-full my-2 px-2"
           />
 
