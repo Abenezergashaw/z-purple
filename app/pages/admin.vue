@@ -102,7 +102,7 @@ async function fetchUsers() {
   const res = await axios.post(
     `${url}/api/get-children`,
     {
-      userId: 17,
+      userId: user.value?.id,
       page: page.value,
       limit: 10,
       search: search.value,
