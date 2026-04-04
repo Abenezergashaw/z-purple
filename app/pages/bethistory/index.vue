@@ -109,23 +109,38 @@ function selectTab(index) {
   activeTab.value = index;
 }
 
+// function convertToEthiopianTime(utcString) {
+//   // 1. Create a Date object (append 'Z' to ensure it's treated as UTC)
+//   const date = new Date(utcString.replace(" ", "T") + "Z");
+
+//   // 2. Add 3 hours (3 * 60 * 60 * 1000 milliseconds)
+//   const EAT_OFFSET = 3 * 60 * 60 * 1000;
+//   const ethiopianDate = new Date(date.getTime() + EAT_OFFSET);
+
+//   // 3. Format back to string
+//   const year = ethiopianDate.getUTCFullYear();
+//   const month = String(ethiopianDate.getUTCMonth() + 1).padStart(2, "0");
+//   const day = String(ethiopianDate.getUTCDate()).padStart(2, "0");
+//   const hours = String(ethiopianDate.getUTCHours()).padStart(2, "0");
+//   const minutes = String(ethiopianDate.getUTCMinutes()).padStart(2, "0");
+//   const seconds = String(ethiopianDate.getUTCSeconds()).padStart(2, "0");
+
+//   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+// }
+
 function convertToEthiopianTime(utcString) {
-  // 1. Create a Date object (append 'Z' to ensure it's treated as UTC)
-  const date = new Date(utcString.replace(" ", "T") + "Z");
+  const date = new Date(utcString);
 
-  // 2. Add 3 hours (3 * 60 * 60 * 1000 milliseconds)
-  const EAT_OFFSET = 3 * 60 * 60 * 1000;
-  const ethiopianDate = new Date(date.getTime() + EAT_OFFSET);
-
-  // 3. Format back to string
-  const year = ethiopianDate.getUTCFullYear();
-  const month = String(ethiopianDate.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(ethiopianDate.getUTCDate()).padStart(2, "0");
-  const hours = String(ethiopianDate.getUTCHours()).padStart(2, "0");
-  const minutes = String(ethiopianDate.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(ethiopianDate.getUTCSeconds()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  // Use 'sv-SE' (Sweden) locale because it naturally uses YYYY-MM-DD
+  return date.toLocaleString("sv-SE", {
+    timeZone: "Africa/Addis_Ababa",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 const nextPage = () => {

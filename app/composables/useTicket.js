@@ -195,7 +195,7 @@ export function useTicket() {
     });
 
     if (!res.data.error) {
-      shareTicketId.value = res.data.fastBetId;
+      shareTicketId.value = res.data.bookingCode;
       console.log(shareTicketId.value);
       toggleModal("share");
     }
@@ -204,7 +204,7 @@ export function useTicket() {
   const loadBookedTicket = async (id) => {
     const { url } = useUrl();
 
-    const res = await axios.get(`${url}/api/getFastTickets?ticketId=${id}`);
+    const res = await axios.get(`${url}/api/booked-bet?id=${id}`);
 
     if (res.data.error) {
       bookedTicketLoadError.value = res.data?.message;
