@@ -9,6 +9,7 @@ const {
   loadBookedTicket,
   bookedTicketLoadError,
   getPrintTicket,
+  getPrintTicket2,
   loadCashierTicket,
 } = useTicket();
 
@@ -49,7 +50,7 @@ const close = () => {
         />
         <button
           @click="
-            getPrintTicket(ticketId);
+            getPrintTicket2(ticketId);
             ticketId = null;
           "
           class="bg-[#49215D] text-white w-[25%] h-8 text-center font-bold"

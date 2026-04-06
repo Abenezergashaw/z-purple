@@ -347,6 +347,17 @@ export function useTicket() {
     }
   };
 
+  const getPrintTicket2 = async (id) => {
+    const { printModal, toggleModal } = useModal();
+    const { url } = useUrl();
+
+    const response = await axios.get(`${url}/api/get-ticket?ticketId=${id}`);
+
+    if (response?.data?.error) return;
+    toggleModal("print");
+    ticketDisplay.value = response.data;
+  };
+
   return {
     manageBets,
     removeBet,
@@ -363,6 +374,7 @@ export function useTicket() {
     repeatBet,
     continueBet,
     getPrintTicket,
+    getPrintTicket2,
     loadCashierTicket,
     ticket,
     totalBets,
